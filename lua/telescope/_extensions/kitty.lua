@@ -55,26 +55,27 @@ local kitty_focus_tab = function(tab)
   Job
       :new({
         command = "kitty",
-        args = { "@", "focus-tab", "--match", "id:" .. tab.tab_id },
+        args = { "@", "focus-tab", "--add-cursor", "--match", "id:" .. tab.tab_id },
       })
       :sync()
 end
 
 local kitty_get_text = function(tab)
-  Job
+  local stdout, ret = Job
       :new({
         command = "kitty",
         args = { "@", "get-text", "--match", "id:" .. tab.window_id },
       })
       :sync()
+  return stdout
 end
-
 local window_preview = previewers.new({
   preview_fn = function(_, entry, status)
     local preview_win = status.preview_win
     local bufnr = vim.api.nvim_win_get_buf(preview_win)
     local text = kitty_get_text(entry.value)
-    -- vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, text)
+    -- _p(text)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, text)
 
     -- if not pcall(vim.api.nvim_win_set_cursor, preview_win, { entry.value.lnum, 0 }) then
     --   return
@@ -92,6 +93,8 @@ local kitty = function(opts)
   local kitty_tabs = kitty_get_tabs()
   pickers.new(opts, {
     prompt_title = "kitty tabs",
+    previewer = window_preview,
+    sorter = conf.generic_sorter(opts),
     finder = finders.new_table({
       results = kitty_tabs,
       entry_maker = function(tab)
@@ -102,7 +105,6 @@ local kitty = function(opts)
         }
       end,
     }),
-    sorter = conf.generic_sorter(opts),
     attach_mappings = function(prompt_bufnr, _)
       actions.select_default:replace(function()
         actions.close(prompt_bufnr)
@@ -112,12 +114,11 @@ local kitty = function(opts)
       end)
 
       return true
-      -- kitty_focus_tab(selection)
     end,
-    previewer=window_preview,
   }):find()
 end
-kitty()
+-- _p(kitty_get_text({ window_id = "99" }))
+-- kitty()
 
 return telescope.register_extension({
   exports = {
